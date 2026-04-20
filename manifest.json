@@ -1,0 +1,21 @@
+[
+  {
+    "guid": "5e8cb70d-9b7e-40b6-b614-8b2d535ec020",
+    "name": "Missing File Cleanup",
+    "description": "Removes library items whose files no longer exist on disk.",
+    "overview": "Dry-run-by-default scheduled task that prunes phantom library entries.",
+    "owner": "Webflue",
+    "category": "General",
+    "imageUrl": "",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "Initial release.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Webflue/jellyfin/releases/download/v1.0.0/missing-file-cleanup_1.0.0.0.zip",
+        "checksum": "REPLACE_WITH_MD5_OF_ZIP",
+        "timestamp": "2026-04-20T00:00:00Z"
+      }
+    ]
+  }
+]

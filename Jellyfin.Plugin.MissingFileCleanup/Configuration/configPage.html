@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Missing File Cleanup</title>
+</head>
+<body>
+<div id="MissingFileCleanupConfigPage"
+     data-role="page"
+     class="page type-interior pluginConfigurationPage"
+     data-require="emby-input,emby-button,emby-checkbox">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="MissingFileCleanupConfigForm">
+                <h2>Missing File Cleanup</h2>
+                <p class="fieldDescription">
+                    This plugin runs as a scheduled task. It walks every selected item type in your
+                    library, checks whether the file still exists on disk, and (when enabled) removes
+                    the corresponding library entry. The file on disk is <em>never</em> touched.
+                </p>
+
+                <div id="dryRunBanner"
+                     style="padding:1em;margin:1em 0;border-radius:0.25em;background:#f5a623;color:#000;">
+                    <strong>Dry-run mode is ON.</strong>
+                    Enable &ldquo;Allow deletion&rdquo; below to let the task actually remove entries.
+                </div>
+
+                <fieldset class="verticalSection verticalSection-extrabottompadding">
+                    <legend>Safety</legend>
+
+                    <label class="emby-checkbox-label">
+                        <input id="EnableDeletion" type="checkbox" is="emby-checkbox" />
+                        <span>Allow deletion</span>
+                    </label>
+                    <div class="fieldDescription">
+                        When unchecked, the task only logs what it would remove.
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="SafetyThresholdPercent">
+                            Safety threshold (%)
+                        </label>
+                        <input id="SafetyThresholdPercent"
+                               type="number"
+                               is="emby-input"
+                               min="0"
+                               max="100"
+                               step="1" />
+                        <div class="fieldDescription">
+                            Abort the run if more than this percentage of scanned items are flagged as
+                            missing. Protects against an offline mount wiping your library. Set to 0 to
+                            disable.
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="verticalSection verticalSection-extrabottompadding">
+                    <legend>Scope</legend>
+
+                    <label class="emby-checkbox-label">
+                        <input id="ScanMovies" type="checkbox" is="emby-checkbox" />
+                        <span>Movies</span>
+                    </label>
+                    <label class="emby-checkbox-label">
+                        <input id="ScanEpisodes" type="checkbox" is="emby-checkbox" />
+                        <span>TV Episodes</span>
+                    </label>
+                    <label class="emby-checkbox-label">
+                        <input id="ScanAudio" type="checkbox" is="emby-checkbox" />
+                        <span>Audio / Music tracks</span>
+                    </label>
+                    <label class="emby-checkbox-label">
+                        <input id="ScanOtherVideos" type="checkbox" is="emby-checkbox" />
+                        <span>Other videos (home videos, music videos)</span>
+                    </label>
+                </fieldset>
+
+                <fieldset class="verticalSection verticalSection-extrabottompadding">
+                    <legend>Last run</legend>
+                    <div id="LastRunSummary"
+                         style="font-family:monospace;padding:0.75em;background:#111;color:#ddd;border-radius:0.25em;">
+                        (never)
+                    </div>
+                </fieldset>
+
+                <div>
+                    <button is="emby-button" type="submit" class="raised button-submit block">
+                        <span>Save</span>
+                    </button>
+                    <button id="RunNowButton" is="emby-button" type="button" class="raised block">
+                        <span>Run now</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+    (function () {
+        var pluginId = '5e8cb70d-9b7e-40b6-b614-8b2d535ec020';
+        var taskKey = 'MissingFileCleanup';
+
+        function updateBanner(enabled) {
+            var banner = document.getElementById('dryRunBanner');
+            if (enabled) {
+                banner.style.background = '#d0021b';
+                banner.style.color = '#fff';
+                banner.innerHTML = '<strong>Deletion is ENABLED.</strong> The task will permanently remove library entries for any file it cannot find on disk.';
+            } else {
+                banner.style.background = '#f5a623';
+                banner.style.color = '#000';
+                banner.innerHTML = '<strong>Dry-run mode is ON.</strong> Enable &ldquo;Allow deletion&rdquo; below to let the task actually remove entries.';
+            }
+        }
+
+        function load(page) {
+            Dashboard.showLoadingMsg();
+            ApiClient.getPluginConfiguration(pluginId).then(function (cfg) {
+                page.querySelector('#EnableDeletion').checked         = !!cfg.EnableDeletion;
+                page.querySelector('#SafetyThresholdPercent').value   = cfg.SafetyThresholdPercent != null ? cfg.SafetyThresholdPercent : 25;
+                page.querySelector('#ScanMovies').checked             = cfg.ScanMovies !== false;
+                page.querySelector('#ScanEpisodes').checked           = cfg.ScanEpisodes !== false;
+                page.querySelector('#ScanAudio').checked              = cfg.ScanAudio !== false;
+                page.querySelector('#ScanOtherVideos').checked        = cfg.ScanOtherVideos !== false;
+                page.querySelector('#LastRunSummary').textContent     = cfg.LastRunSummary || '(never)';
+                updateBanner(!!cfg.EnableDeletion);
+                Dashboard.hideLoadingMsg();
+            });
+        }
+
+        function save(page) {
+            Dashboard.showLoadingMsg();
+            ApiClient.getPluginConfiguration(pluginId).then(function (cfg) {
+                cfg.EnableDeletion         = page.querySelector('#EnableDeletion').checked;
+                cfg.SafetyThresholdPercent = parseInt(page.querySelector('#SafetyThresholdPercent').value, 10);
+                if (isNaN(cfg.SafetyThresholdPercent) || cfg.SafetyThresholdPercent < 0) {
+                    cfg.SafetyThresholdPercent = 0;
+                }
+                if (cfg.SafetyThresholdPercent > 100) {
+                    cfg.SafetyThresholdPercent = 100;
+                }
+                cfg.ScanMovies       = page.querySelector('#ScanMovies').checked;
+                cfg.ScanEpisodes     = page.querySelector('#ScanEpisodes').checked;
+                cfg.ScanAudio        = page.querySelector('#ScanAudio').checked;
+                cfg.ScanOtherVideos  = page.querySelector('#ScanOtherVideos').checked;
+
+                ApiClient.updatePluginConfiguration(pluginId, cfg).then(function (res) {
+                    Dashboard.processPluginConfigurationUpdateResult(res);
+                    updateBanner(cfg.EnableDeletion);
+                });
+            });
+        }
+
+        function runNow() {
+            ApiClient.getScheduledTasks({ IsEnabled: true }).then(function (tasks) {
+                var task = tasks.filter(function (t) { return t.Key === taskKey; })[0];
+                if (!task) {
+                    Dashboard.alert({ title: 'Missing File Cleanup', message: 'Task not found. Restart Jellyfin after installing the plugin.' });
+                    return;
+                }
+                ApiClient.startScheduledTask(task.Id).then(function () {
+                    Dashboard.alert({ title: 'Missing File Cleanup', message: 'Task started. Watch Dashboard > Scheduled Tasks for progress and Dashboard > Logs for output.' });
+                });
+            });
+        }
+
+        document.querySelector('#MissingFileCleanupConfigPage').addEventListener('pageshow', function () {
+            load(this);
+        });
+
+        document.querySelector('#MissingFileCleanupConfigForm').addEventListener('submit', function (e) {
+            save(this.closest('#MissingFileCleanupConfigPage'));
+            e.preventDefault();
+            return false;
+        });
+
+        document.querySelector('#RunNowButton').addEventListener('click', function () {
+            runNow();
+        });
+    })();
+    </script>
+</div>
+</body>
+</html>
